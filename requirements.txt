@@ -1,0 +1,10 @@
+beautifulsoup4==4.12.3
+Flask==2.3.3
+googlesearch-python==1.2.3
+numpy==1.26.4
+pandas==2.2.3
+python-dateutil==2.9.0.post0
+requests==2.32.3
+scikit-learn==1.5.2
+whois==0.9.27
+gunicorn==22.0.0

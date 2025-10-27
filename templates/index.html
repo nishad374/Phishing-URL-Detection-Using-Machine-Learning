@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Phishing URL Detection website developed using ML" />
+    <meta name="keywords" content="phishing url, cyber security, machine learning, python" />
+    <meta name="author" content="Abhishek Nishad & Priyanka Jha" />
+
+    <title>Phishing URL Detector</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+
+    <!-- Bootstrap (only for grid/utilities if needed) -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" />
+
+    <style>
+        /* ---------- Reset & base ---------- */
+        :root{
+            --glass-bg: rgba(255,255,255,0.06);
+            --accent-1: #36d1dc;
+            --accent-2: #5b86e5;
+            --safe: rgba(72,187,120,0.95);
+            --phish: rgba(237,76,76,0.95);
+            --muted: rgba(255,255,255,0.65);
+            --card-radius: 16px;
+            --ease: cubic-bezier(.2,.9,.3,1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', sans-serif; }
+        html,body { height: 100%; }
+
+        /* ---------- Animated gradient blobs background ---------- */
+        body{
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 10% 10%, rgba(255,255,255,0.03), transparent 8%),
+                        radial-gradient(circle at 90% 80%, rgba(255,255,255,0.02), transparent 8%),
+                        linear-gradient(135deg, #0f2027 0%, #203a43 40%, #2c5364 100%);
+            overflow: hidden;
+            color: #fff;
+            padding: 40px;
+        }
+
+        /* floating decorative blobs */
+        .bg-blob {
+            position: absolute;
+            filter: blur(36px) saturate(120%);
+            opacity: 0.6;
+            transform: translate3d(0,0,0);
+            pointer-events: none;
+            will-change: transform, opacity;
+            animation: floatBlob 12s var(--ease) infinite;
+            mix-blend-mode: screen;
+        }
+        .bg-blob.blob1 {
+            width: 420px; height: 420px; left: -80px; top: -120px;
+            background: linear-gradient(45deg, rgba(59,130,246,0.9), rgba(99,102,241,0.9));
+            animation-duration: 18s;
+        }
+        .bg-blob.blob2 {
+            width: 360px; height: 360px; right: -80px; bottom: -110px;
+            background: linear-gradient(45deg, rgba(56,189,248,0.9), rgba(139,92,246,0.85));
+            animation-duration: 20s;
+            animation-direction: reverse;
+        }
+        @keyframes floatBlob {
+            0% { transform: translateY(0) scale(1); opacity: 0.7; }
+            50% { transform: translateY(-30px) scale(1.05); opacity: 0.85; }
+            100% { transform: translateY(0) scale(1); opacity: 0.7; }
+        }
+
+        /* ---------- Main card (glass) ---------- */
+        .card-wrap {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 720px;
+            border-radius: var(--card-radius);
+            background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+            box-shadow: 0 12px 40px rgba(2,6,23,0.6);
+            padding: 28px;
+            backdrop-filter: blur(8px) saturate(120%);
+            border: 1px solid rgba(255,255,255,0.06);
+            overflow: hidden;
+            transition: transform .35s var(--ease);
+        }
+        .card-wrap:hover { transform: translateY(-6px); }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 26px;
+            align-items: center;
+        }
+
+        /* ---------- Left column (form) ---------- */
+        .title {
+            display:flex;
+            align-items:center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+        .title h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            text-shadow: 0 6px 18px rgba(0,0,0,0.35);
+        }
+        .subtitle {
+            color: var(--muted);
+            margin-bottom: 18px;
+            font-size: 0.95rem;
+        }
+
+        /* floating label form */
+        .form {
+            width: 100%;
+        }
+        .field {
+            position: relative;
+            margin-bottom: 18px;
+        }
+        .field input[type="text"]{
+            width: 100%;
+            padding: 16px 18px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.02);
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: box-shadow .2s var(--ease), border-color .2s var(--ease), transform .2s var(--ease);
+            -webkit-appearance: none;
+        }
+        .field input[type="text"]::placeholder{ color: rgba(255,255,255,0.35); }
+        .field input[type="text"]:focus{
+            box-shadow: 0 8px 30px rgba(59,130,246,0.08);
+            border-color: rgba(91,134,229,0.9);
+            transform: translateY(-2px);
+        }
+        .label {
+            position: absolute;
+            left: 16px;
+            top: 12px;
+            transform-origin: left top;
+            font-size: 0.88rem;
+            color: rgba(255,255,255,0.6);
+            pointer-events: none;
+            transition: transform .18s ease, opacity .18s ease, top .18s ease;
+        }
+        /* when input has value shrink label */
+        .field input:not(:placeholder-shown) + .label,
+        .field input:focus + .label {
+            transform: translateY(-28px) scale(.9);
+            opacity: 0.95;
+            top: 0px;
+        }
+
+        /* ---------- Button with gradient + ripple ---------- */
+        .btn-check {
+            display: inline-block;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+            padding: 0;
+        }
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 18px;
+            width: 100%;
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 1rem;
+            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 22px rgba(27,62,89,0.28), 0 2px 6px rgba(0,0,0,0.25);
+            transition: transform .18s var(--ease), box-shadow .18s var(--ease);
+        }
+        .btn-primary:active { transform: translateY(1px) scale(.998); }
+        .btn-primary:focus { outline: none; box-shadow: 0 0 0 6px rgba(91,134,229,0.12); }
+
+        /* ripple element */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple 600ms var(--ease);
+            background: rgba(255,255,255,0.22);
+            pointer-events: none;
+        }
+        @keyframes ripple {
+            to { transform: scale(6); opacity: 0; }
+        }
+
+        /* ---------- Right column (info + result) ---------- */
+        .info {
+            background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+            padding: 18px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.035);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 160px;
+            align-items: stretch;
+            justify-content: center;
+        }
+        .info .hint {
+            font-size: 0.92rem;
+            color: var(--muted);
+        }
+        .info .small {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.55);
+        }
+
+        /* result box (Flask templating used) */
+        .result {
+            margin-top: 8px;
+            font-size: 1rem;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-weight: 700;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+            word-wrap: break-word;
+            opacity: 0;
+            transform: translateY(8px) scale(.995);
+            animation: resultIn .45s forwards var(--ease);
+        }
+        .result.safe { background-color: var(--safe); color: #06311a; }
+        .result.phishing { background-color: var(--phish); color: #3b0b0b; }
+        @keyframes resultIn {
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .url-result {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.9);
+            word-break: break-all;
+        }
+        .url-result a { color: #e0ffff; text-decoration: none; font-weight: 700; }
+        .url-result a:hover { text-decoration: underline; }
+
+        .footer {
+            margin-top: 18px;
+            font-size: 0.82rem;
+            color: rgba(255,255,255,0.5);
+            text-align: center;
+        }
+
+        /* ---------- Responsive ---------- */
+        @media (max-width: 880px){
+            .card-grid { grid-template-columns: 1fr; }
+            .info { order: -1; }
+            .card-wrap { padding: 20px; }
+        }
+        @media (max-width: 480px){
+            .title h1 { font-size: 1.25rem; }
+            .card-wrap { padding: 16px; }
+            .bg-blob { display: none; } /* reduce clutter on tiny screens */
+        }
+    </style>
+</head>
+<body>
+    <!-- decorative blobs -->
+    <div class="bg-blob blob1" aria-hidden="true"></div>
+    <div class="bg-blob blob2" aria-hidden="true"></div>
+
+    <!-- main card -->
+    <div class="card-wrap" role="main" aria-labelledby="pageTitle">
+        <div class="card-grid">
+            <!-- left: form -->
+            <div>
+                <div class="title">
+                    <h1 id="pageTitle">🔍 Phishing URL Detector</h1>
+                </div>
+                <p class="subtitle">Enter a URL to check whether it's safe or potentially phishing.</p>
+
+                <!-- The form posts to /predict on your server (Flask) -->
+                <form class="form" action="/predict" method="post" autocomplete="off" novalidate>
+                    <div class="field">
+                        <!-- placeholder used to trigger :placeholder-shown trick for label -->
+                        <input type="text" id="urlInput" name="url" placeholder=" " required aria-label="URL to check" />
+                        <label class="label" for="urlInput">Enter URL (e.g., https://example.com)</label>
+                    </div>
+
+                    <div class="field btn-check" style="margin-bottom:0;">
+                        <button class="btn-primary" id="checkBtn" type="submit" aria-live="polite">
+                            Check URL
+                        </button>
+                        <!-- ripple will be inserted here by JS -->
+                    </div>
+                </form>
+
+                <!-- optional help text -->
+                <div style="margin-top:14px;">
+                    <small style="color:var(--muted);">Tip: For best results include the protocol (http:// or https://).</small>
+                </div>
+
+                <div class="footer">©2025 Abhishek Nishad & Priyanka Jha</div>
+            </div>
+
+            <!-- right: information & dynamic result (server-rendered) -->
+            <aside class="info" aria-live="polite">
+                <div class="hint">Quick info</div>
+                <div class="small">
+                    This tool uses machine learning to analyze features of the URL and estimate whether it might be a phishing attempt.
+                    Always double-check before entering sensitive information on unknown sites.
+                </div>
+
+                <!-- Flask template block for server-side prediction result -->
+                {% if prediction_text %}
+                    <div class="result {% if prediction_text == 'Safe URL' %}safe{% else %}phishing{% endif %}" id="resultBox">
+                        {{ prediction_text }}
+                    </div>
+                    <div class="url-result">
+                        <strong>URL checked:</strong>
+                        <a href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ url }}</a>
+                    </div>
+                {% endif %}
+            </aside>
+        </div>
+    </div>
+
+    <!-- Scripts: ripple effect + small accessibility niceties -->
+    <script>
+        // Ripple effect on button
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.btn-primary');
+            if (!btn) return;
+            const rect = btn.getBoundingClientRect();
+            const ripple = document.createElement('span');
+            ripple.className = 'ripple';
+            const size = Math.max(rect.width, rect.height) * 0.8;
+            ripple.style.width = ripple.style.height = size + 'px';
+            ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+            ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+            btn.parentElement.appendChild(ripple);
+            // remove after animation
+            ripple.addEventListener('animationend', () => ripple.remove());
+        });
+
+        // Small enhancement: move label when page has prefilled value (e.g., after redirect)
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.field input').forEach(input => {
+                // If the server returned the field value, ensure label shrinks
+                if (input.value.trim() !== '') {
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    // Add class (not necessary — CSS uses :placeholder-shown)
+                }
+            });
+
+            // If there is a server-rendered result, focus it for screen readers
+            const result = document.getElementById('resultBox');
+            if (result) result.focus?.();
+        });
+
+        // Accessibility: show focused input outline visibly on keyboard navigation
+        document.body.addEventListener('keydown', function(e){
+            if (e.key === 'Tab') document.documentElement.classList.add('keyboard-nav');
+        }, { once: true });
+    </script>
+
+    <!-- Bootstrap JS for compatibility (not required for functionality above) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+</body>
+</html>
