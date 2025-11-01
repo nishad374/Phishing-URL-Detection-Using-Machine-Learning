@@ -91,3 +91,4 @@ The Gradient Boosting Classifier achieved the highest accuracy of 97.4%, making 
 
 Abhishek & Priyanka
 📧 abhisheknishad374@gmail.com
+📧 jhap3187@gmail.com
